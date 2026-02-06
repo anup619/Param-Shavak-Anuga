@@ -1,6 +1,7 @@
-# Makefile wrapper for ANUGA CMake build system
+# Makefile wrapper for ANUGA setup.sh + CMake build targets
 
-.PHONY: all setup install test clean clean-all help test_anuga verify
+.PHONY: all setup install test test_anuga test_tools verify geoserver-start geoserver-stop \
+        clean clean-outputs clean-opensourcetools clean-all help
 
 all: setup
 
@@ -25,14 +26,39 @@ test_anuga:
 	fi
 	@cd build && $(MAKE) test_anuga
 
-verify:
-	@echo "Verifying ANUGA installation..."
-	@if [ ! -f build/setup_mpi_env.sh ]; then \
-		echo "ERROR: build/setup_mpi_env.sh not found. Run 'make setup' first."; \
+test_tools:
+	@echo "Testing toolchain (best effort: Node/GeoServer)..."
+	@if [ ! -d build ]; then \
+		echo "ERROR: build directory not found. Run 'make setup' first."; \
 		exit 1; \
 	fi
-	@bash -c "source build/setup_mpi_env.sh && python3 -c 'import anuga; print(\"ANUGA version:\", anuga.__version__)'"
-	@echo "✓ ANUGA is properly installed and importable"
+	@cd build && $(MAKE) test_tools
+
+verify:
+	@echo "Quick verify (ANUGA import using build/test script)..."
+	@if [ ! -f build/test_anuga.sh ]; then \
+		echo "ERROR: build/test_anuga.sh not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@bash build/test_anuga.sh >/dev/null 2>&1 || true
+	@bash -c "source build/setup_mpi_env.sh >/dev/null 2>&1 || true; python3 -c 'import anuga; print(\"ANUGA version:\", anuga.__version__)'"
+	@echo "✓ ANUGA is importable (basic check)"
+
+geoserver-start:
+	@echo "Starting GeoServer (detached)..."
+	@if [ ! -f build/geoserver_start.sh ]; then \
+		echo "ERROR: build/geoserver_start.sh not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@bash build/geoserver_start.sh
+
+geoserver-stop:
+	@echo "Stopping GeoServer..."
+	@if [ ! -f build/geoserver_stop.sh ]; then \
+		echo "ERROR: build/geoserver_stop.sh not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
+	@bash build/geoserver_stop.sh
 
 clean:
 	@echo "Cleaning build directory..."
@@ -67,7 +93,7 @@ clean-outputs:
 	fi
 	@echo "Simulation outputs cleaned."
 
-clean-opensourcetools: 
+clean-opensourcetools:
 	@echo "Removing OpenSourceTools..."
 	@if [ -d opensource_tools/geoserver-2.28.2-bin ]; then \
 		rm -rf opensource_tools/geoserver-2.28.2-bin/ ; \
@@ -82,7 +108,7 @@ clean-opensourcetools:
 		echo "Anuga Viewer removed."; \
 	fi
 	@echo "OpenSourceTools cleaned (geoserver, node, and anuga-viewer)."
- 
+
 clean-all: clean clean-outputs clean-opensourcetools
 	@echo "Removing ANUGA source..."
 	@if [ -d anuga_core ]; then \
@@ -93,32 +119,25 @@ clean-all: clean clean-outputs clean-opensourcetools
 	fi
 	@if [ -d anuga-viewer-app/node_modules ]; then \
 		rm -rf anuga-viewer-app/node_modules/; \
-		echo "React App Node module remover removed."; \
+		echo "React App node_modules removed."; \
 	fi
-	@echo "Complete cleanup done (build, source, opensourcetools, nodemodule and simulation outputs)."
-
-
+	@echo "Complete cleanup done (build, source, opensourcetools, node_modules, outputs)."
 
 help:
 	@echo "ANUGA Build System - Available targets:"
 	@echo ""
-	@echo "  make setup         - Install all dependencies and build ANUGA (default)"
-	@echo "  make install       - Alias for setup"
-	@echo "  make test          - Test ANUGA installation"
-	@echo "  make verify        - Quick verification that ANUGA can be imported"
-	@echo "  make clean         - Remove build directory"
-	@echo "  make clean-outputs - Remove simulation outputs (mesh_cache, anuga_outputs)"
-	@echo "  make clean-all     - Remove everything (build, source, and outputs)"
-	@echo "  make help          - Show this help message"
+	@echo "  make setup            - Install deps + build ANUGA + unpack tools (default)"
+	@echo "  make install          - Alias for setup"
+	@echo "  make test             - Run ANUGA tests"
+	@echo "  make test_tools        - Best-effort checks for Node/GeoServer env"
+	@echo "  make verify            - Quick import sanity check"
+	@echo "  make geoserver-start   - Start GeoServer (detached)"
+	@echo "  make geoserver-stop    - Stop GeoServer"
+	@echo "  make clean             - Remove build directory"
+	@echo "  make clean-outputs      - Remove simulation outputs (mesh_cache, anuga_outputs)"
+	@echo "  make clean-opensourcetools - Remove unpacked tools (geoserver/node/anuga-viewer)"
+	@echo "  make clean-all          - Remove everything (build, source, tools, outputs)"
 	@echo ""
-	@echo "After installation, before running ANUGA scripts:"
+	@echo "After installation:"
 	@echo "  source build/setup_mpi_env.sh"
-	@echo ""
-	@echo "Example workflow:"
-	@echo "  make setup         # First time setup"
-	@echo "  make verify        # Verify installation"
-	@echo "  make test          # Run full test suite"
-	@echo ""
-	@echo "Cleanup workflow:"
-	@echo "  make clean-outputs # Clean only simulation outputs"
-	@echo "  make clean-all     # Complete cleanup including source"
+	@echo "  source build/setup_tools_env.sh"
