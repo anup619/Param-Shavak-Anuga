@@ -20,7 +20,7 @@ base_discharge_cumecs = 150.0     # m^3/s
 
 [simulation]
 final_time_hours = 12.0
-yieldstep_s = 60.0
+yieldstep_s = 3600.0
 cfl = 1.0
 print_simulation_logs = true
 
@@ -41,3 +41,8 @@ taper_minutes = 30.0
 
 [parallel]
 enable = true
+
+[postprocessing]
+generate_timeseries = false
+timeseries_steps = 25
+timeseries_cellsize = 10

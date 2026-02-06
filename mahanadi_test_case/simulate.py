@@ -23,7 +23,10 @@ def main():
         
         try:
             bridge = AnugaGeoserverBridge(settings_path, script_dir)
-            bridge.run_post_processing(target_sww_name=cfg.paths.output_file)
+            bridge.run_post_processing(
+                target_sww_name=cfg.paths.output_file,
+                generate_timeseries=cfg.postprocessing.generate_timeseries
+            )
             print("\nDEPLOYMENT COMPLETE. Check your React App.")
         except Exception as e:
             print(f"\nDeployment failed: {e}")

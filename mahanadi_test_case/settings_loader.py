@@ -18,6 +18,7 @@ from config import (
     InitialConditionsConfig,
     RainfallConfig,
     ParallelConfig,
+    PostprocessingConfig,
     validate_config,
 )
 
@@ -34,11 +35,6 @@ def _abs_path(script_dir: str, maybe_rel: str) -> str:
 
 
 def load_config(settings_path: str, script_dir: str) -> Config:
-    """
-    Load settings.toml and return a validated Config.
-    - `settings_path`: absolute path to settings.toml
-    - `script_dir`: directory containing simulate.py (used for resolving relative paths)
-    """
     with open(settings_path, "rb") as f:
         raw = tomllib.load(f)
 
@@ -49,6 +45,7 @@ def load_config(settings_path: str, script_dir: str) -> Config:
     init = raw.get("initial_conditions", {})
     rain = raw.get("rainfall", {})
     parallel = raw.get("parallel", {})
+    postproc = raw.get("postprocessing", {})
     
     output_file_name = str(_require(paths, "output_file", "paths"))
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
@@ -93,7 +90,12 @@ def load_config(settings_path: str, script_dir: str) -> Config:
         ),
         parallel=ParallelConfig(
             enable=bool(_require(parallel, "enable", "parallel")),
-        )
+        ),
+        postprocessing=PostprocessingConfig(
+            generate_timeseries=bool(postproc.get("generate_timeseries", False)),
+            timeseries_steps=int(postproc.get("timeseries_steps", 25)),
+            timeseries_cellsize=float(postproc.get("timeseries_cellsize", 10)),
+        ),
     )
 
     validate_config(cfg)

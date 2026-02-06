@@ -49,8 +49,17 @@ class RainfallConfig:
     ramp_up_minutes: float
     hold_minutes: float
     taper_minutes: float
-
-
+   
+@dataclass(frozen=True)
+class ParallelConfig:
+    enable: bool
+    
+@dataclass(frozen=True)
+class PostprocessingConfig:
+    generate_timeseries: bool
+    timeseries_steps: int
+    timeseries_cellsize: float
+    
 @dataclass(frozen=True)
 class Config:
     paths: PathsConfig
@@ -60,10 +69,7 @@ class Config:
     initial_conditions: InitialConditionsConfig
     rainfall: RainfallConfig
     parallel: ParallelConfig
-    
-@dataclass(frozen=True)
-class ParallelConfig:
-    enable: bool
+    postprocessing: PostprocessingConfig
 
 def validate_config(cfg: Config) -> None:
     """Fail early with friendly errors if settings are invalid."""
