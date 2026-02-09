@@ -10,3 +10,5 @@ mahanadi_test_case/anuga_pmesh_gui.log
 opensource_tools/geoserver-2.28.2-bin
 opensource_tools/node-v24.13.0-linux-x64
 opensource_tools/geoserver.out
+opensource_tools/anuga-viewer
+.venv

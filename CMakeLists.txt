@@ -118,6 +118,7 @@ add_custom_target(write_env
 # Build/install ANUGA (no deps here)
 # - setup.sh installs dependencies (python wheels, mpi4py, etc)
 # - this only installs anuga_core editable into the SAME Python interpreter
+# - MODIFIED: Uses --user flag to install to ~/.local instead of system directories
 # -----------------------------
 set(BUILD_ANUGA_CONTENT "#!/bin/bash
 set -euo pipefail
@@ -148,11 +149,20 @@ then
 fi
 
 cd \"${ANUGA_DIR}\"
-echo \"Building and installing ANUGA into: \$(${Python3_EXECUTABLE} -c 'import sys; print(sys.executable)')\"
+echo \"Building and installing ANUGA locally to: ~/.local/lib/python3.x/site-packages\"
+
+# Detect if --break-system-packages is supported (modern Debian/Ubuntu)
+PIP_FLAGS=\"\"
+if \"\$PY\" -m pip install --help 2>&1 | grep -q \"break-system-packages\"; then
+  PIP_FLAGS=\"--break-system-packages\"
+fi
+
+# --user installs to ~/.local instead of system directories
 # --no-deps because setup.sh already installed all deps.
 # --no-build-isolation so it uses already-installed build deps.
-\"\$PY\" -m pip install -e . --no-build-isolation --no-deps
-echo \"ANUGA installation complete.\"
+# --break-system-packages (if supported) allows install on externally-managed systems
+\"\$PY\" -m pip install -e . --no-build-isolation --no-deps --user \$PIP_FLAGS
+echo \"ANUGA installation complete (installed to user site-packages).\"
 ")
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/build_anuga.sh "${BUILD_ANUGA_CONTENT}")
@@ -161,7 +171,7 @@ add_custom_target(build_anuga
   COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/build_anuga.sh
   COMMAND ${CMAKE_CURRENT_BINARY_DIR}/build_anuga.sh
   DEPENDS clone_anuga write_env
-  COMMENT "Installing ANUGA (editable, no deps)"
+  COMMENT "Installing ANUGA (editable, no deps, user install)"
 )
 
 # -----------------------------
@@ -266,7 +276,7 @@ add_custom_target(test_tools
 # -----------------------------
 add_custom_target(setup
   DEPENDS build_anuga
-  COMMENT "Complete ANUGA setup (clone + editable install)"
+  COMMENT "Complete ANUGA setup (clone + editable install to ~/.local)"
 )
 
 # -----------------------------
@@ -282,8 +292,9 @@ message(STATUS "========================================")
 message(STATUS "ANUGA CMake Configuration Summary")
 message(STATUS "========================================")
 message(STATUS "Python interpreter: ${Python3_EXECUTABLE}")
+message(STATUS "Installation target: ~/.local (user site-packages)")
 message(STATUS "Build targets:")
-message(STATUS "  make setup         - Clone + editable install ANUGA (no deps)")
+message(STATUS "  make setup         - Clone + editable install ANUGA to ~/.local")
 message(STATUS "  make test_anuga    - Test installation")
 message(STATUS "  make test_tools    - Best-effort tool checks (Node/GeoServer env)")
 message(STATUS "  make clean_anuga   - Remove ANUGA source")
