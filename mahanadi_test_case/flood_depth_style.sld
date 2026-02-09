@@ -16,13 +16,15 @@
             <ColorMap type="ramp">
               <ColorMapEntry color="#000000" quantity="-9999" opacity="0" label="No Data"/>
               <ColorMapEntry color="#ffffff" quantity="0" opacity="0" label="No Flood"/>
-              <ColorMapEntry color="#d4f1f9" quantity="0.01" opacity="0.8" label="0.01m"/>
-              <ColorMapEntry color="#73b2ff" quantity="0.5" opacity="0.85" label="0.5m"/>
-              <ColorMapEntry color="#0070ff" quantity="1" opacity="0.9" label="1m"/>
-              <ColorMapEntry color="#ffff00" quantity="2" opacity="0.9" label="2m"/>
-              <ColorMapEntry color="#ffaa00" quantity="3.5" opacity="0.95" label="3.5m"/>
-              <ColorMapEntry color="#ff5500" quantity="5" opacity="0.95" label="5m"/>
-              <ColorMapEntry color="#ff0000" quantity="10" opacity="1.0" label="10m+"/>
+
+              <ColorMapEntry color="#ffff00" quantity="0.01" opacity="0.9" label="Very Low"/>
+              <ColorMapEntry color="#ffcc00" quantity="0.2" opacity="0.95" label="Low"/>
+              <ColorMapEntry color="#ff9900" quantity="0.5" opacity="0.95" label="Moderate"/>
+              <ColorMapEntry color="#ff6600" quantity="1" opacity="1.0" label="High"/>
+              <ColorMapEntry color="#ff3300" quantity="2" opacity="1.0" label="Very High"/>
+              <ColorMapEntry color="#ff0000" quantity="3.5" opacity="1.0" label="Severe"/>
+              <ColorMapEntry color="#cc0000" quantity="5" opacity="1.0" label="Extreme"/>
+              <ColorMapEntry color="#990000" quantity="10" opacity="1.0" label="Catastrophic"/>
             </ColorMap>
           </RasterSymbolizer>
         </Rule>

@@ -8,7 +8,7 @@ output_dir = "anuga_outputs"
 
 [mesh]
 # Higher triangle area = faster but less accurate
-max_triangle_area_m2 = 2500   # 150 * 150
+max_triangle_area_m2 = 900   # 150 * 150
 min_angle_deg = 28.0
 use_cached_mesh = true
 mesh_file = "input_files/mesh" 
@@ -19,8 +19,8 @@ peak_discharge_cumecs = 800.0     # m^3/s
 base_discharge_cumecs = 150.0     # m^3/s
 
 [simulation]
-final_time_hours = 12.0
-yieldstep_s = 3600.0
+final_time_hours = 48.0
+yieldstep_s = 10800.0
 cfl = 1.0
 print_simulation_logs = true
 
