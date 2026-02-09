@@ -194,6 +194,43 @@ class AnugaGeoserverBridge:
                 if update_resp.status_code == 200:
                     print(f" Time series SRS configured")
                 
+                # Configure Time Dimension
+                print(f" Configuring Time dimension...")
+                dimension_url = f"{self.gs_url}/workspaces/{self.workspace}/coveragestores/{store_name}/coverages/{layer_name}.json"
+
+                dimension_data = {
+                    "coverage": {
+                        "metadata": {
+                            "entry": [
+                                {
+                                    "@key": "time",
+                                    "dimensionInfo": {
+                                        "enabled": True,
+                                        "presentation": "LIST",
+                                        "units": "ISO8601",
+                                        "defaultValue": {
+                                            "strategy": "MINIMUM"
+                                        },
+                                        "nearestMatchEnabled": True
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+
+                dimension_resp = requests.put(
+                    dimension_url,
+                    json=dimension_data,
+                    headers={"Content-type": "application/json"},
+                    auth=self.auth
+                )
+
+                if dimension_resp.status_code == 200:
+                    print(f" Time dimension configured successfully")
+                else:
+                    print(f" Warning: Time dimension configuration responded with {dimension_resp.status_code}: {dimension_resp.text}")
+                
                 # Apply style
                 if self.upload_style():
                     style_url = f"{self.gs_url}/layers/{self.workspace}:{layer_name}.json"
