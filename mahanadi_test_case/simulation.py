@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import math
 import time
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, List
 
 import numpy as np
 import anuga
@@ -54,6 +54,26 @@ def read_first_point(shp_path: str) -> Tuple[float, float]:
     x, y = shp.points[0]
     return float(x), float(y)
 
+def read_polygon_from_shapefile(shp_path: str) -> List[Tuple[float, float]]:
+    sf = shapefile.Reader(shp_path)
+    shapes = sf.shapes()
+
+    if not shapes:
+        raise ValueError("Shapefile has no features")
+
+    shp = shapes[0]
+
+    if shp.shapeType not in (shapefile.POLYGON, shapefile.POLYGONZ, shapefile.POLYGONM):
+        raise ValueError(f"Expected polygon shapefile, got shapeType {shp.shapeType}")
+
+    points = shp.points
+    
+    polygon = [(float(x), float(y)) for x, y in points]
+    
+    if polygon[0] != polygon[-1]:
+        polygon.append(polygon[0])
+    
+    return polygon
 
 # =============================================================================
 # Forcing builders
@@ -79,7 +99,6 @@ def build_dam_release(cfg: Config) -> Callable[[float], float]:
         return base
 
     return dam_release_Q
-
 
 def build_rainfall(cfg: Config) -> Callable[[float], float]:
 
@@ -119,7 +138,13 @@ def build_rainfall(cfg: Config) -> Callable[[float], float]:
     return rainfall_mps
 
 def get_mesh_filepath(cfg: Config) -> str:
-    mesh_filename = f"{cfg.paths.name_stem}.msh"
+    boundary_suffix = ""
+    if cfg.boundary.use_polygon_boundary:
+        boundary_suffix = f"_poly_{cfg.boundary.boundary_type}"
+    else:
+        boundary_suffix = f"_rect_{cfg.boundary.boundary_type}"
+        
+    mesh_filename = f"{cfg.paths.name_stem}{boundary_suffix}.msh"
     return os.path.join(cfg.mesh.mesh_cache_dir, mesh_filename)
 
 
@@ -140,6 +165,12 @@ def run_simulation(cfg: Config) -> None:
         print("\nSIMULATION SETTINGS:")
         print(f"  Duration: {cfg.simulation.final_time_hours} hours")
         print(f"  Dam peak discharge: {cfg.dam_release.peak_discharge_cumecs} m^3/s")
+        
+        if cfg.boundary.use_polygon_boundary:
+            print(f"  Boundary: POLYGON from {os.path.basename(cfg.paths.aoi_shp_path)} ({cfg.boundary.boundary_type.upper()})")
+        else:
+            print(f"  Boundary: RECTANGULAR DEM extent ({cfg.boundary.boundary_type.upper()})")
+            
         if cfg.rainfall.enable:
             print(f"  Rainfall: ENABLED ({cfg.rainfall.intensity_mm_hr} mm/hr peak)")
             print(
@@ -167,8 +198,36 @@ def run_simulation(cfg: Config) -> None:
 
         # Load dam location + check inside DEM
         dam_x, dam_y = read_first_point(cfg.paths.dam_shp_path)
-        if not (xmin <= dam_x <= xmax and ymin <= dam_y <= ymax):
-            raise ValueError("Dam point is outside DEM extent!")
+        
+        # Determine bounding polygon and boundary tags based on configuration
+        if cfg.boundary.use_polygon_boundary:
+            # Use polygon from shapefile
+            bounding_polygon = read_polygon_from_shapefile(cfg.paths.aoi_shp_path)
+            
+            # Tag all polygon edges with a single tag
+            num_edges = len(bounding_polygon) - 1  # -1 because polygon is closed
+            boundary_tags = {"exterior": list(range(num_edges))}
+            
+            print(f"[rank 0] Using polygon boundary with {num_edges} edges")
+            
+            # Verify dam is inside polygon (simple bounding box check)
+            poly_xs = [p[0] for p in bounding_polygon]
+            poly_ys = [p[1] for p in bounding_polygon]
+            poly_xmin, poly_xmax = min(poly_xs), max(poly_xs)
+            poly_ymin, poly_ymax = min(poly_ys), max(poly_ys)
+            
+            if not (poly_xmin <= dam_x <= poly_xmax and poly_ymin <= dam_y <= poly_ymax):
+                print(f"WARNING: Dam point ({dam_x:.1f}, {dam_y:.1f}) may be outside polygon bounds!")
+        else:
+            # Use rectangular DEM extent
+            bounding_polygon = [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
+            boundary_tags = {"south": [0], "east": [1], "north": [2], "west": [3]}
+            
+            print(f"[rank 0] Using rectangular DEM boundary")
+            
+            # Check dam inside DEM
+            if not (xmin <= dam_x <= xmax and ymin <= dam_y <= ymax):
+                raise ValueError("Dam point is outside DEM extent!")
 
         # Convert DEM -> .dem -> .pts (cached for speed)
         anuga.asc2dem(cfg.paths.asc_path, use_cache=False, verbose=False)
@@ -176,10 +235,7 @@ def run_simulation(cfg: Config) -> None:
         pts_path = os.path.join(os.path.dirname(cfg.paths.asc_path), f"{cfg.paths.name_stem}.pts")
         anuga.dem2pts(dem_path, use_cache=False, verbose=False)
 
-        # Build mesh + domain
-        bounding_polygon = [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
-        boundary_tags = {"south": [0], "east": [1], "north": [2], "west": [3]}
-        
+        # Build mesh + domain        
         mesh_filepath = get_mesh_filepath(cfg)
 
         if cfg.mesh.use_cached_mesh:
@@ -233,8 +289,15 @@ def run_simulation(cfg: Config) -> None:
     domain.set_quantity("stage", cfg.initial_conditions.initial_water_level_m)
     domain.set_quantity("friction", cfg.initial_conditions.friction_mannings_n)
 
-    bc = anuga.Transmissive_boundary(domain)
-    domain.set_boundary({k: bc for k in ["west", "east", "south", "north"]})
+    if cfg.boundary.boundary_type == "reflective":
+        bc = anuga.Reflective_boundary(domain)
+    else:
+        bc = anuga.Transmissive_boundary(domain)
+    
+    if cfg.boundary.use_polygon_boundary:
+        domain.set_boundary({"exterior": bc})
+    else:
+        domain.set_boundary({"west": bc, "east": bc, "south": bc, "north": bc})
 
     dam_Q = build_dam_release(cfg)
     rain_rate = build_rainfall(cfg)

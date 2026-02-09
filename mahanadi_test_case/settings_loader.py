@@ -19,6 +19,7 @@ from config import (
     RainfallConfig,
     ParallelConfig,
     PostprocessingConfig,
+    BoundaryConfig,
     validate_config,
 )
 
@@ -46,6 +47,7 @@ def load_config(settings_path: str, script_dir: str) -> Config:
     rain = raw.get("rainfall", {})
     parallel = raw.get("parallel", {})
     postproc = raw.get("postprocessing", {})
+    boundary = raw.get("boundary", {}) 
     
     output_file_name = str(_require(paths, "output_file", "paths"))
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
@@ -58,6 +60,7 @@ def load_config(settings_path: str, script_dir: str) -> Config:
             asc_path=_abs_path(script_dir, str(_require(paths, "asc_path", "paths"))),
             dam_shp_path=_abs_path(script_dir, str(_require(paths, "dam_shp_path", "paths"))),
             output_dir=_abs_path(script_dir, str(_require(paths, "output_dir", "paths"))),
+            aoi_shp_path=_abs_path(script_dir, str(paths.get("aoi_shp_path", "paths")))
         ),
         mesh=MeshConfig(
             max_triangle_area_m2=float(_require(mesh, "max_triangle_area_m2", "mesh")),
@@ -95,6 +98,10 @@ def load_config(settings_path: str, script_dir: str) -> Config:
             generate_timeseries=bool(postproc.get("generate_timeseries", False)),
             timeseries_steps=int(postproc.get("timeseries_steps", 25)),
             timeseries_cellsize=float(postproc.get("timeseries_cellsize", 10)),
+        ),
+        boundary=BoundaryConfig(
+            use_polygon_boundary=bool(boundary.get("use_polygon_boundary", False)),
+            boundary_type=str(boundary.get("boundary_type", "transmissive")),
         ),
     )
 

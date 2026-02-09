@@ -10,6 +10,7 @@ class PathsConfig:
     asc_path: str
     dam_shp_path: str
     output_dir: str
+    aoi_shp_path: str
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,11 @@ class PostprocessingConfig:
     timeseries_cellsize: float
     
 @dataclass(frozen=True)
+class BoundaryConfig:
+    use_polygon_boundary: bool
+    boundary_type: str
+    
+@dataclass(frozen=True)
 class Config:
     paths: PathsConfig
     mesh: MeshConfig
@@ -70,6 +76,7 @@ class Config:
     rainfall: RainfallConfig
     parallel: ParallelConfig
     postprocessing: PostprocessingConfig
+    boundary: BoundaryConfig
 
 def validate_config(cfg: Config) -> None:
     """Fail early with friendly errors if settings are invalid."""
@@ -107,3 +114,6 @@ def validate_config(cfg: Config) -> None:
         ]:
             if minutes < 0:
                 raise ValueError(f"{field_name} must be >= 0")
+            
+    if cfg.boundary.boundary_type not in ["transmissive", "reflective"]:
+        raise ValueError("boundary.boundary_type must be 'transmissive' or 'reflective'")
