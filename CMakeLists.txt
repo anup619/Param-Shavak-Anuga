@@ -79,7 +79,7 @@ set(MPI_ENV_CONTENT "#!/bin/bash
 export PATH=\"\$HOME/.local/bin:\$PATH\"
 
 # Try to locate MPI compiler if not already visible
-if ! command -v mpicc >/dev/null 2>&1\; then
+if ! command -v mpicc >/dev/null 2>&1; then
   for d in \\
     /usr/lib64/openmpi/bin \\
     /usr/lib/openmpi/bin \\
@@ -87,8 +87,8 @@ if ! command -v mpicc >/dev/null 2>&1\; then
     /usr/lib/aarch64-linux-gnu/openmpi/bin \\
     /opt/openmpi/bin \\
     /opt/ompi/bin \\
-    /usr/local/openmpi/bin\; do
-    if [ -x \"\$d/mpicc\" ]\; then
+    /usr/local/openmpi/bin; do
+    if [ -x \"\$d/mpicc\" ]; then
       export PATH=\"\$d:\$PATH\"
       base=\"\$(dirname \"\$d\")\"
       [ -d \"\$base/lib64\" ] && export LD_LIBRARY_PATH=\"\$base/lib64:\${LD_LIBRARY_PATH:-}\"
@@ -99,7 +99,7 @@ if ! command -v mpicc >/dev/null 2>&1\; then
   done
 fi
 
-if command -v mpicc >/dev/null 2>&1\; then
+if command -v mpicc >/dev/null 2>&1; then
   echo \"MPI compiler available: \$(command -v mpicc)\"
 else
   echo \"WARNING: mpicc not found in PATH\"
