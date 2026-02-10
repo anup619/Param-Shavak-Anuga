@@ -1,80 +1,218 @@
-# Modeler's Manual: Running Simulations & Workflows
+# Simulation Running Guide (Modelers / Domain Experts)
 
-This guide explains how to configure, execute, and deploy flood simulations using the ANUGA-GeoServer pipeline. It is intended for researchers and domain experts.
+## Purpose
+
+This document explains how to configure and run flood simulations using the Param Shavak ANUGA pipeline.
+
+This guide is intended for:
+- Flood modelers
+- Simulation engineers
+- HPC job operators
+
+If environment is not installed → See INSTALL.md  
+If you only want to view results → See USER_GUIDE.md  
 
 ---
 
-## 1. The Configuration Heart: `settings.toml`
-Everything about the simulation is controlled here. Before running, open `mahanadi_test_case/settings.toml`.
+## 1. Pre-Run Checklist (IMPORTANT)
 
-Key Parameters:
-- `[domain]`: Set the `mesh_resolution` (smaller = more detail but slower).
-- `[hydrology]`: Define the `manning_n` (friction) and `boundary_conditions`.
-- `[simulation]`: Set the `yield_step` (how often to save data) and `final_time`.
+Before running any simulation:
+
+✔ ANUGA installed successfully  
+✔ MPI environment available  
+✔ Simulation inputs ready (DEM, shapefiles, config)  
+✔ GeoServer running (only if auto deployment is needed)
 
 ---
 
-## 2. Running the Simulation
+## 2. Step 1 — Load Simulation Environment
 
-### Step 1: Initialize the Environment
-Always source the MPI environment first to ensure Python sees the correct ANUGA build.
+Always load MPI environment before running ANUGA.
+
 ```bash
 source build/setup_mpi_env.sh
 ```
 
-### Step 2: Launch (Sequential vs. Parallel)
-For small test cases:
+
+This ensures:
+- Correct MPI compiler
+- Correct library paths
+- Correct ANUGA Python environment
+
+---
+
+## 3. Step 2 — Configure Simulation
+
+Main configuration file:
+`mahanadi_test_case/settings.toml`
+
+
+---
+
+### Key Sections
+
+#### Domain
+Controls spatial resolution and mesh size.
+
+Higher resolution → More accuracy → More compute time.
+
+---
+
+#### Hydrology
+Controls:
+- Manning friction
+- Boundary conditions
+- Flow behavior
+
+---
+
+#### Simulation
+Controls:
+- yield_step → Output frequency
+- final_time → Total simulation duration
+
+---
+
+## 4. Step 3 — Run Simulation
+
+### Small Test Runs (Sequential)
 ```bash
 python3 mahanadi_test_case/simulate.py
 ```
 
-For large-scale production runs (e.g., 16 cores on Param Shavak):
+---
+
+### HPC / Production Runs (MPI Parallel)
+
+Example:
 ```bash
 mpirun -np 16 python3 mahanadi_test_case/simulate.py
 ```
 
-## 3. Post-Processing & The Bridge (`bridge.py`)
-Once the simulation finishes, it generates a large `.sww` file in `anuga_outputs/.` 
-The `bridge.py` script is the "glue" that:
-1. Extracts the **Max Depth** (static map).
-2. Generates the **Time Series** (tiled sequence).
-3. Pushes metadata and styles to **GeoServer**.
-
-## Automation Note:
-Usually, `simulate.py` calls `bridge.py` automatically at the end of a run. If you need to re-run the deployment logic without re-running the whole simulation:
-```bash
-python3 mahanadi_test_case/bridge.py <runid>
-
-#For saving the timeseries file and deploying on geoserver use --timeseries attribute
-python3 mahanadi_test_case/bridge.py <runid> --timeseries
-```
-
-## 4. Understanding Outputs
-
-| File Type        | Location              | Description                                        |
-| :--------------- | :-------------------- | :------------------------------------------------- |
-| .sww             | `anuga_outputs/ `     | Raw ANUGA binary output (NetCDF)                   |
-| ._max_depth.tif  | `anuga_outputs/ `     | Georeferenced raster for the maximum flood extent. |
-| _meta.json       | `anuga_outputs/ `     | Metadata log containing parameters and run time.   |
-| _timeseries/     | `anuga_outputs/ `     | Folder containing PNG/TIF slices for animation.    |
-
-## 5. Critical Pitfalls & Checklist
-* **GeoServer Status:** If bridge.py fails with a "Connection Refused" error, make sure GeoServer is running 
-```bash 
-make geoserver-start
-
-# Or
-bash build/geoserver_start.sh
-
-# Verify it by
-curl -I http://localhost:8080/geoserver
-
-# Should give status [200] or [302]
-```
-
-* **Mesh Cache:** If you change the domain boundaries, delete the `mesh_cache/` folder to force ANUGA to regenerate the triangulation.
-
-* **Coordinate Systems**: The pipeline defaults to **UTM Zone 45N (EPSG:32645)** for the Mahanadi region. If modeling a different region, update the projection in both `settings.toml` and `geoserverConfig.`
+Adjust `-np` based on available cores.
 
 ---
-**Next Step:** Once the simulation is deployed to GeoServer, refer to [USER_GUIDE.md](./USER_GUIDE.md)  to visualize the results in the dashboard.
+
+## 5. What Happens During Simulation
+
+Pipeline Flow:
+
+```plaintext
+simulate.py
+↓
+ANUGA Physics Engine
+↓
+.sww Output Generated
+↓
+bridge.py (auto or manual)
+↓
+GeoServer Deployment
+```
+---
+
+## 6. Step 4 — Post Processing (Bridge)
+
+Normally:
+simulate.py automatically triggers bridge.py.
+
+---
+
+### Manual Bridge Execution
+
+If you need to redeploy results:
+```bash
+python3 mahanadi_test_case/bridge.py <runid>
+```
+
+For timeseries generation:
+```bash
+python3 mahanadi_test_case/bridge.py <runid> --timeseries
+```
+---
+
+## 7. Understanding Outputs 
+
+Location: `mahanadi_test_case/anuga_outputs/`
+
+---
+
+### Output Files
+
+| File | Description |
+|---|---|
+| `.sww` | Raw ANUGA simulation output |
+| `_max_depth.tif` | Maximum flood depth raster |
+| `_meta.json` | Run metadata |
+| `_timeseries/` | Time slice images / rasters |
+
+---
+
+## 8. GeoServer Deployment Requirements
+
+Bridge requires GeoServer to be running.
+
+Start if needed:
+```bash
+make geoserver-start
+```
+Verify:
+```bash
+curl -I http://localhost:8080/geoserver
+```
+
+Expected:
+200 OR 302 response.
+
+---
+
+## 9. Critical Pitfalls
+
+### Mesh Not Updating
+Delete:
+`mesh_cache/`
+
+---
+
+### GeoServer Connection Refused
+Start GeoServer OR verify port.
+
+---
+
+### Wrong Coordinate System
+Default pipeline assumes:
+`EPSG:32645 (UTM Zone 45N)`
+
+
+Update if modeling new region.
+
+---
+
+## 10. Performance Notes
+
+Increasing mesh resolution increases:
+- RAM usage
+- Runtime
+- Output file size
+
+Parallel MPI scaling improves runtime but increases IO load.
+
+---
+
+## 11. Typical Workflow Summary
+```plaintext
+Edit settings.toml
+↓
+source setup_mpi_env.sh
+↓
+mpirun simulate.py
+↓
+bridge.py deploys outputs
+↓
+View in dashboard
+```
+
+---
+
+## Next Step
+
+After successful deployment → Open USER_GUIDE.md to view results.

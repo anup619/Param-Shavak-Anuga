@@ -1,78 +1,187 @@
-# User Guide: Visualizing Flood Results
+# User Guide — Flood Results Dashboard
 
-This guide is for end-users and stakeholders who need to access the dashboard and interpret the flood simulation results. No technical or programming knowledge is required.
+## Purpose
+
+This guide explains how to open and use the flood visualization dashboard.
+
+This document is intended for:
+- Decision makers
+- Disaster management teams
+- Stakeholders
+- Non-technical users
+
+If you need to run simulations → See RUNNING.md  
+If you need to install system → See INSTALL.md  
 
 ---
 
-## 1. Quick Start: Launching the Dashboard
+## 1. Accessing The Dashboard
 
-Before you can see the maps, the background services must be running. If the IT team has already set this up, you can skip to Step 3.
+If your IT / HPC team has already started the system:
 
-### Step 1: Start the Map Server
+Open browser and go to:
+`http://localhost:5173`
+
+
+If you do not know the dashboard URL, contact your system operator.
+
+---
+
+## 2. If Dashboard Is Not Running (Operator Section)
+
+If you are responsible for starting services:
+
+---
+
+### Step 1 — Start Map Server (GeoServer)
+
 ```bash
 make geoserver-start
-
-# Or
-bash build/geoserver_start.sh
-
-# Verify it by
-curl -I http://localhost:8080/geoserver
-
-# Should give status [200] or [302]
 ```
-### Step 2: Start the Web Dashboard
+OR
+```bash
+bash build/geoserver_start.sh
+```
+
+Verify server:
+```bash
+curl -I http://localhost:8080/geoserver
+```
+
+Expected: 200 or 302 status.
+
+---
+
+### Step 2 — Start Dashboard (React App)
 ```bash
 source build/setup_tools_env.sh
-
-# Navigate to your react app folder
 cd anuga-viewer-app
-
-# start the react app
 npm run dev
-
 ```
-React app will be started at `http://localhost:5173/`
 
-### Step 3: Open your Browser
-Navigate to: `http://localhost:5173/`
+Dashboard default URL:
+`http://localhost:5173`
 
-## 2. Using the Dashboard
 
-### Layer Control (Right Panel)
-* **Max Depth Layers:** Select a specific simulation run to see the "Worst Case Scenario." This shows the highest level the water reached at every point.
-* **Time Series Layers:** Select this to see how the flood evolved over time (e.g., from the moment of dam release to 24 hours later).
+---
 
-### The Time Slider
-When a "Time Series" layer is active, a slider will appear at the top.
-* **Drag the slider** to move forward or backward in time.
-* Each step represents a specific interval (e.g., 30 minutes) defined during the simulation.
+## 3. Using The Dashboard
 
-### Navigation
-* **Zoom:** Use your mouse wheel or the +/- buttons.
-* **Pan:** Click and drag to move around the Mahanadi basin.
-* **Auto-Center:** The map will automatically jump to the relevant area whenever you select a new layer.
+---
 
-## 3. How to Read the Map (The Legend)
-The colors on the map indicate the depth of the water.
+### Layer Selection (Right Panel)
 
-| Color    | Depth        | Interpretation                                                |
-| :--------| :----------- | :------------------------------------------------------------ |
-| Yellow   | 0.01m - 0.2m | Very shallow. Safe for most vehicles.                         |
-| Orange   | 0.5m - 1.0m  | Moderate. Dangerous for small cars; entering buildings.       |
-| Red      | 2.0m - 3.5m  | Severe. Dangerous for people; ground floors submerged.        |
-| Deep Red | 5.0m - 10m+  | Catastrophic. Structural damage likely; evacuation mandatory. |
+#### Max Depth Layer
+Shows maximum water depth reached during simulation.
 
-***Note: Areas with no color are considered "Dry" or unaffected by the flood scenario.***
+Use this for:
+- Worst-case flood extent
+- Risk assessment
+- Planning evacuation zones
 
-## 4. Common Questions
-#### Why is the map blank?
-* Ensure you have clicked on a layer name in the right-hand panel.
-* Wait a few seconds for the "Loading..." indicator to disappear; high-resolution maps can take a moment to fetch from the server.
-#### The time slider isn't moving the water.
-* Make sure you have a "Time Series" layer selected, not a "Max Depth" layer. Max Depth is a static image and does not change with time.
+---
 
-**Support:** For technical issues or any help contact \
-Anup Bagde \
-Project Engineer, HPC-ESEG Group \
-CDAC - Pune. \
-***anupb@cdac.in***
+#### Time Series Layer
+Shows flood evolution over time.
+
+Use this for:
+- Flood arrival time
+- Flood progression analysis
+- Emergency response timing
+
+---
+
+## 4. Time Slider
+
+When Time Series layer is selected:
+
+You will see a time slider.
+
+You can:
+- Drag to move through simulation time
+- See flood growth or recession
+
+Each step represents a simulation time interval.
+
+---
+
+## 5. Map Navigation
+
+Zoom:
+Mouse wheel OR +/- buttons
+
+Pan:
+Click and drag
+
+Auto Center:
+Map automatically moves to selected dataset area.
+
+---
+
+## 6. Understanding Flood Colors
+
+| Color | Depth | Meaning |
+|---|---|---|
+| Yellow | 0.01 – 0.2 m | Minor water accumulation |
+| Orange | 0.5 – 1.0 m | Vehicle movement risky |
+| Red | 2.0 – 3.5 m | Dangerous for people |
+| Dark Red | 5.0 – 10 m+ | Severe flooding, structural risk |
+
+No Color = Dry Area
+
+---
+
+## 7. Common Questions
+
+---
+
+### Map Is Blank
+Check:
+- Layer selected?
+- Wait few seconds for loading
+- Internet / network connectivity
+- Contact operator if issue persists
+
+---
+
+### Time Slider Not Working
+Make sure:
+Time Series layer selected (not Max Depth)
+
+---
+
+### Data Not Visible
+Possible causes:
+- Simulation not deployed to GeoServer
+- GeoServer not running
+- Network access blocked
+
+---
+
+## 8. Good Practices
+
+For best performance:
+- Use Chrome or Edge browser
+- Stable internet connection
+- Avoid opening too many layers simultaneously
+
+---
+
+## 9. When To Contact Support
+
+Contact support if:
+- Dashboard not opening
+- Layers not loading after long wait
+- Data appears corrupted or missing
+- Access denied errors
+
+---
+
+## Support Contact
+
+Anup Bagde  
+Project Engineer - HPC ESEG Group  
+CDAC Pune  
+Email: anupb@cdac.in
+
+---

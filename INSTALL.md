@@ -1,101 +1,245 @@
-# Installation & System Architecture Guide (HPC/Admin)
+# Installation Guide (HPC / Admin)
 
-This document provides technical instructions for setting up the ANUGA + Flood Modeling pipeline. It is intended for System Administrators and HPC Engineers who need to manage dependencies, environment variables, and hardware-specific builds.
+## Purpose
 
----
+This document explains how to install and verify the full Param Shavak ANUGA simulation stack.
 
-## 1. System Requirements & Stack
-The toolchain is optimized for Linux environments (Ubuntu 20.04+, RHEL 8+, or BOSS-OS) running on HPC architectures like Param Shavak.
+This guide is intended for:
+- HPC Administrators
+- DevOps Engineers
+- Infra Setup Engineers
 
-| Component       | Version/Source        | Role                                      |
-| :-------------- | :-------------------- | :---------------------------------------- |
-| Python          | 3.8+                  | Simulation logic & post-processing        |
-| ANUGA           | v3.2.0 (cloned)       | Hydrodynamic Physics Engine               |
-| OpenMPI         | 4.x+                  | Parallel Processing (Message Passing)     |
-| GeoServer       | 2.24+                 | Geospatial WMS/WFS Data Hosting           |
-| Node.js         | v20+ (LTS)            | React Dashboard Runtime                   |
-| Java JRE        | 11 or 17              | Runtime for GeoServer (Jetty)             |
+If you only want to run simulations → See RUNNING.md  
+If you only want to view dashboard → See USER_GUIDE.md  
 
 ---
 
-## 2. Pre-Installation (Critical Prep)
+## 1. Supported Systems
 
-### IMPORTANT: Conda Warning
-Before starting the installation, **DEACTIVATE ALL CONDA ENVIRONMENTS**. 
-Conda's internal library paths often conflict with system MPI compilers (`mpicc`) and NetCDF headers, leading to "Symbol not found" errors during the ANUGA build.
+Recommended OS:
+- Ubuntu 20.04+
+- Debian 11+
+- RHEL 8+
+- AlmaLinux 8+
+- BOSS OS (CDAC HPC environments)
+
+Hardware:
+- Multi-core CPU recommended
+- MPI cluster support optional but preferred
+
+---
+
+## 2. Pre-Installation Requirements
+
+### IMPORTANT — Disable Conda Environments
+
+Conda conflicts with system MPI and NetCDF libraries.
+
+Run:
 ```bash
 conda deactivate
-# Repeat until you are in the base system environment
 ```
 
-## Air-Gapped/Cluster Prep
-
-If working on a restricted HPC node without direct internet access, ensure the following binary archives are pre-staged in the opensource_tools/ directory:
-
-1. geoserver-*-bin.zip
-2. node-v*-linux-x64.tar.xz
-
-**MPI Note:** Ensure mpicc and mpirun are accessible in your $PATH. On clusters, this usually requires 'module load mpi/openmpi-x86_64'.
+Repeat until fully out of conda.
 
 ---
 
-## 3. Automated Installation
-The system uses a CMake-driven build process to compile ANUGA's C-extensions and Python dependencies against your specific hardware (CPU/MPI) instructions.
+## 3. Step 0 — Get The Base Repository (FIRST TIME ONLY)
+```bash
+git clone https://github.com/anup619/Param-Shavak-Anuga
+
+cd Param-Shavak-Anuga
+git lfs pull
+```
+Notes:
+- `git lfs pull` required only first clone OR if large files missing
+- All installation commands assume you are in repo root
+
+---
+
+## 4. Air-Gapped / Offline HPC Preparation
+
+If system has no internet access:
+
+Place these inside:
+```bash
+opensource_tools/
+```
+
+Required archives:
+- geoserver-2.28.x-bin.zip
+- node-vXX-linux-x64.tar.xz
+
+Installer will auto-detect and extract if present.
+
+---
+
+## 5. MPI Environment Note (HPC Only)
+
+Ensure MPI is accessible:
 
 ```bash
-# Initialize the build system
-cmake .
+module load mpi/openmpi-x86_64
+```
+Or verify manually:
+```bash
+which mpicc
+which mpirun
+```
 
-# Execute the installation pipeline
+---
+
+## 6. Full Installation (Automated)
+
+Run:
+```bash
 make setup
 ```
 
-## What happens during 'make setup':
-1. System Check: Verifies headers for libnetcdf, gdal, and gfortran.
-2. Environment Isolation: Configures local paths to avoid polluting system Python.
-3. ANUGA Build: Clones anuga_core, compiles Cython kernels, and installs in editable mode.
-4. Tool Deployment: Extracts Node.js and GeoServer into the project tree.
-5. Script Generation: Automatically writes environment-sourcing scripts in build/.
 
-## 4. Environment Verification
-Once the build completes, use these tests to verify the integrity of the stack.
+---
 
-### A. Verify Physics Engine (ANUGA + MPI)
+## What `make setup` Does Internally
+
+### System Layer
+Installs:
+- GCC / Build tools
+- Python dev stack
+- NetCDF headers
+- OpenMPI
+- Java (for GeoServer)
+
+---
+
+### Python Layer
+Installs:
+- numpy, scipy, matplotlib
+- netcdf4
+- meson build tools
+- ANUGA dependencies
+- mpi4py compiled using system MPI
+
+---
+
+### ANUGA Layer
+CMake:
+- Clones anuga_core
+- Installs locally into user Python site packages
+- Generates MPI environment script
+
+---
+
+### Tool Layer (Optional)
+If archives exist:
+- Extract GeoServer locally
+- Extract Node locally
+- Build anuga-viewer if dependencies exist
+
+---
+
+## 7. Post Installation Verification
+
+### Verify ANUGA + MPI
 ```bash
-source build/setup_mpi_env.sh
-make verify
+cd build
+make test_anuga
 ```
 
-Verification check: Ensures ANUGA can be imported and detects multiple MPI processors.
+Expected:
+- mpi4py imports successfully
+- ANUGA imports successfully
+- MPI compiler detected
 
-### B. Verify Visualization Tools (Node + GeoServer)
+---
+
+### Verify Tools Environment
 ```bash
 source build/setup_tools_env.sh
 make test_tools
 ```
 
-Verification check: Confirms Node.js pathing and Java/GeoServer accessibility.
-
-## 5. Directory Architecture
-Post-installation, your workspace will be structured as follows:
-
-```plaintext
-.
-├── anuga_core/          # Compiled ANUGA source
-├── build/               # Generated environment & control scripts
-│   ├── setup_mpi_env.sh # <--- SOURCE THIS FOR SIMULATIONS
-│   └── setup_tools_env.sh # <--- SOURCE THIS FOR UI/GEOSERVER
-├── opensource_tools/    # Extracted binary tools (Node/GeoServer)
-└── mahanadi_test_case/  # Simulation project files
-```
-
-## 6. Technical Troubleshooting & Caveats
-
-**MPI Compilation Issues**
-If mpi4py fails during installation, the build system likely cannot find your MPI wrapper. Fix: export MPICC=$(which mpicc) pip install mpi4py --no-cache-dir
-
-**Shared Library Paths**
-On RHEL-based systems (BOSS-OS), libnetcdf.so may reside in non-standard directories. Fix: The build/setup_mpi_env.sh script is generated to handle this, but you may need to manually append paths to LD_LIBRARY_PATH if using custom-built libraries.
+Checks:
+- Node path
+- GeoServer presence
+- Viewer path (if built)
 
 ---
-**Next Step:** Once the environment is verified, refer to [RUNNING.md](./RUNNING.md) for simulation configuration and data workflow instructions.
+
+## 8. Environment Scripts (IMPORTANT)
+
+### Simulation Environment
+Before running simulations:
+
+```bash
+source build/setup_mpi_env.sh
+```
+
+---
+
+### Tools Environment
+Before running GeoServer / Node / Viewer:
+
+```bash
+source build/setup_tools_env.sh
+```
+---
+
+## 9. Directory Layout After Install
+```plaintext
+├── build/
+|   ├── setup_mpi_env.sh
+|   ├── setup_tools_env.sh
+|   ├── geoserver_start.sh
+|   └── geoserver_stop.sh
+├── anuga_core/
+├── opensource_tools/
+└── mahanadi_test_case/
+```
+---
+
+## 10. Common Installation Issues
+
+### MPI Not Found
+Load module OR verify OpenMPI install.
+
+---
+
+### mpi4py Build Fails
+Usually MPI compiler not visible.
+
+Fix:
+```bash
+export MPICC=$(which mpicc)
+```
+
+---
+### GeoServer Not Starting
+Check Java:
+```bash
+java -version
+```
+
+---
+
+## 11. Clean Reinstall
+
+Remove build artifacts:
+```bash
+make clean
+```
+
+Full clean:
+```bash
+make clean-all
+```
+
+Then reinstall:
+```bash
+make setup
+```
+---
+
+## Next Step
+
+Once installation is verified → Go to:
+RUNNING.md
